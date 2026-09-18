@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+build/
+dist/
+*.xcuserdatad
+# Throwaway prototypes from the feasibility study. Kept locally, not published:
+# their logs contain personal paths and window titles.
+probes/
+# Local Claude Code session settings.
+.claude/
