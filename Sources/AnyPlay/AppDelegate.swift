@@ -44,9 +44,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             timer.fireDate = Date().addingTimeInterval(8)
             RunLoop.main.add(timer, forMode: .common)
         }
+        if LaunchOptions.current.clicksSourceCentreOnLaunch {
+            let timer = Timer(timeInterval: 6.0, repeats: false) { _ in
+                MainActor.assumeIsolated { controller.clickSourceCentreForTest() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+        }
         if LaunchOptions.current.sendsPlayPauseOnLaunch {
+            // Through the real command path, not straight to the media key — otherwise
+            // the test would not touch the code that actually runs.
             let timer = Timer(timeInterval: 5.0, repeats: false) { _ in
-                MediaKeySender.post(.playPause)
+                MainActor.assumeIsolated { controller.sendPlayPauseForTest() }
             }
             RunLoop.main.add(timer, forMode: .common)
         }

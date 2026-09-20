@@ -36,6 +36,14 @@ public struct TargetWindow: Identifiable, Hashable, Sendable {
     }
 
     public var id: CGWindowID { windowID }
+
+    /// The system Picture-in-Picture window. It is treated differently in two places:
+    /// the filter lets it through although it is not on the normal window layer, and
+    /// its controls are pressed through the Accessibility API instead of being sent
+    /// keys — see PictureInPictureControls.
+    public var isPictureInPicture: Bool {
+        bundleID == WindowFilter.pictureInPictureBundleID
+    }
     public var identity: WindowIdentity { WindowIdentity(processID: processID, title: title) }
 
     /// Language-neutral size, e.g. "1300 × 727".

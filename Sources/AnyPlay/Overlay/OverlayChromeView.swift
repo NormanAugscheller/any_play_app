@@ -10,8 +10,12 @@ final class OverlayChromeView: NSView {
 
     let mirror = MirrorView()
     var onClose: (() -> Void)?
+    /// A control the viewer pressed in the overlay. The overlay itself knows nothing
+    /// about how the command reaches the video.
+    var onCommand: ((RemoteCommand) -> Void)?
 
     private let closeButton = NSButton()
+    private let controlBar = NSStackView()
     private let messageLabel = NSTextField(labelWithString: "")
     private let messageButton = NSButton(title: "", target: nil, action: nil)
     private var messageAction: (() -> Void)?
@@ -67,7 +71,11 @@ final class OverlayChromeView: NSView {
         messageButton.isHidden = true
         addSubview(messageButton)
 
+        buildControlBar()
+
         NSLayoutConstraint.activate([
+            controlBar.centerXAnchor.constraint(equalTo: centerXAnchor),
+            controlBar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
             messageLabel.centerXAnchor.constraint(equalTo: centerXAnchor),
             messageLabel.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -18),
             messageLabel.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor, constant: 16),
@@ -85,6 +93,63 @@ final class OverlayChromeView: NSView {
             closeButton.widthAnchor.constraint(equalToConstant: 28),
             closeButton.heightAnchor.constraint(equalToConstant: 28),
         ])
+    }
+
+    /// The transport controls. They are worth having because the Accessibility API
+    /// can operate the system Picture-in-Picture window from behind a fullscreen
+    /// game — a forwarded click cannot, which is measured and written down in
+    /// PictureInPictureControls.
+    private func buildControlBar() {
+        controlBar.translatesAutoresizingMaskIntoConstraints = false
+        controlBar.orientation = .horizontal
+        controlBar.spacing = Self.controlSpacing
+        controlBar.alphaValue = 0
+        addSubview(controlBar)
+
+        let buttons: [(RemoteCommand, String, String)] = [
+            (.back10, "gobackward.10", "overlay.back10"),
+            (.playPause, "playpause.fill", "action.playPause"),
+            (.forward10, "goforward.10", "overlay.forward10"),
+        ]
+        for (command, symbol, key) in buttons {
+            controlBar.addArrangedSubview(controlButton(command, symbol: symbol, key: key))
+        }
+    }
+
+    private func controlButton(_ command: RemoteCommand, symbol: String, key: String) -> NSButton {
+        let title = L10n.tr(key)
+        let button = NSButton()
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.isBordered = false
+        button.wantsLayer = true
+        // The same dark disc as the close button: readable on top of any picture,
+        // and the symbol carries the meaning, not the colour.
+        button.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.65).cgColor
+        button.layer?.cornerRadius = Self.controlSide / 2
+        button.contentTintColor = .white
+        button.image = NSImage(systemSymbolName: symbol, accessibilityDescription: title)
+        if button.image == nil { button.title = title }
+        button.imageScaling = .scaleProportionallyDown
+        button.toolTip = title
+        button.target = self
+        button.action = #selector(controlTapped(_:))
+        button.tag = RemoteCommand.allCases.firstIndex(of: command) ?? 0
+        NSLayoutConstraint.activate([
+            button.widthAnchor.constraint(equalToConstant: Self.controlSide),
+            button.heightAnchor.constraint(equalToConstant: Self.controlSide),
+        ])
+        return button
+    }
+
+    /// 44 points: the same target size the window list uses, and large enough to hit
+    /// without aiming on a small overlay.
+    private static let controlSide: CGFloat = 44
+    private static let controlSpacing: CGFloat = 12
+
+    @objc private func controlTapped(_ sender: NSButton) {
+        let commands = RemoteCommand.allCases
+        guard commands.indices.contains(sender.tag) else { return }
+        onCommand?(commands[sender.tag])
     }
 
     @objc private func closeTapped() { onClose?() }
@@ -126,6 +191,7 @@ final class OverlayChromeView: NSView {
             // 200 ms: within the span that still feels immediate.
             context.duration = 0.2
             closeButton.animator().alphaValue = visible ? 1 : 0
+            controlBar.animator().alphaValue = visible ? 1 : 0
         }
     }
 

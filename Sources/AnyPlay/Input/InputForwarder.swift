@@ -40,6 +40,17 @@ enum RemoteCommand: CaseIterable {
         }
     }
 
+    /// The matching control of the system Picture-in-Picture window, where there is
+    /// one. Muting and fullscreen have no button there.
+    var pictureInPictureControl: PictureInPictureControl? {
+        switch self {
+        case .playPause:  return .playPause
+        case .back10:     return .back10
+        case .forward10:  return .forward10
+        case .mute, .fullscreen: return nil
+        }
+    }
+
     /// Only used in the diagnostic log, which is English.
     var logName: String { String(describing: self) }
 }
@@ -67,5 +78,43 @@ enum InputForwarder {
     @discardableResult
     static func send(_ command: RemoteCommand, to pid: pid_t) -> Bool {
         send(key: command.keyCode, to: pid)
+    }
+
+    /// Sends a pointer move to one process, without a click. Used to make a window
+    /// show controls that only appear on hover.
+    @discardableResult
+    static func move(to point: CGPoint, to pid: pid_t) -> Bool {
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let move = CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
+                                 mouseCursorPosition: point, mouseButton: .left)
+        else { return false }
+        move.postToPid(pid)
+        return true
+    }
+
+    /// Sends a pointer move plus a click to one process, at a point in display
+    /// coordinates (origin top left, the coordinate system CGEvent uses).
+    ///
+    /// The move comes first on purpose: the controls of a Picture-in-Picture window
+    /// only appear once the pointer is over it, and a click into nothing does nothing.
+    @discardableResult
+    static func click(at point: CGPoint, to pid: pid_t) -> Bool {
+        let source = CGEventSource(stateID: .hidSystemState)
+        guard let move = CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
+                                 mouseCursorPosition: point, mouseButton: .left),
+              let down = CGEvent(mouseEventSource: source, mouseType: .leftMouseDown,
+                                 mouseCursorPosition: point, mouseButton: .left),
+              let up = CGEvent(mouseEventSource: source, mouseType: .leftMouseUp,
+                               mouseCursorPosition: point, mouseButton: .left)
+        else { return false }
+        move.postToPid(pid)
+        usleep(120_000)
+        // A second move: one alone is sometimes swallowed before the controls are up.
+        move.postToPid(pid)
+        usleep(120_000)
+        down.postToPid(pid)
+        usleep(60_000)
+        up.postToPid(pid)
+        return true
     }
 }

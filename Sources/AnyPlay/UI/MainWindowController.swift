@@ -160,6 +160,7 @@ final class MainWindowController: NSWindowController {
         mirror.onToggleMode = { [weak self] in self?.toggleModeFromUI() }
         pin.onPlacementChanged = { [weak self] in self?.updatePlacementStatus() }
         // The overlay can hide itself; every control showing its state must follow.
+        pin.overlay.onCommand = { [weak self] command in _ = self?.pin.send(command) }
         pin.overlay.onCloseRequest = { [weak self] in
             self?.pin.hideOverlay()
             self?.mirrorController?.setOverlayVisible(false)
@@ -208,6 +209,30 @@ final class MainWindowController: NSWindowController {
         // as well. Windows opened since the last look would otherwise stay missing.
         refreshWindowList()
         DiagnosticLog.shared?.line("WINDOW brought forward")
+    }
+
+    /// Only for --selftest-playpause: goes through the same path as the button and
+    /// the hotkey.
+    func sendPlayPauseForTest() {
+        DiagnosticLog.shared?.line("TEST playPause: \(pin.send(.playPause))")
+    }
+
+    /// Only for --selftest-click: clicks the middle of the source window, so a script
+    /// can find out whether a forwarded click arrives. Phase 0 measured that clicks
+    /// never reached Safari; whether that also holds for the Picture-in-Picture window
+    /// has to be measured, not assumed.
+    func clickSourceCentreForTest() {
+        guard let window = pin.capture.window else {
+            DiagnosticLog.shared?.line("CLICK skipped: no source")
+            return
+        }
+        let centre = CGPoint(x: window.frame.midX, y: window.frame.midY)
+        let ok = InputForwarder.click(at: centre, to: window.processID)
+        DiagnosticLog.shared?.line("CLICK at \(centre) to pid \(window.processID): \(ok)")
+        // The Accessibility API ignores window order entirely. If the source exposes
+        // its controls as elements, they can be pressed from behind a fullscreen game —
+        // which a posted click cannot.
+        AXBridge.dumpTree(ofPID: window.processID)
     }
 
     func openSettings() {

@@ -21,6 +21,36 @@ enum AXBridge {
         return value
     }
 
+    /// Writes what an app offers the Accessibility API into the diagnostic log.
+    /// Diagnosis only — it answers whether a control can be pressed without the window
+    /// being in front.
+    static func dumpTree(ofPID pid: pid_t, depth: Int = 4) {
+        let app = AXUIElementCreateApplication(pid)
+        DiagnosticLog.shared?.line("AX tree of pid \(pid):")
+        describe(app, indent: 0, remaining: depth)
+    }
+
+    private static func describe(_ element: AXUIElement, indent: Int, remaining: Int) {
+        guard remaining > 0 else { return }
+        let role = string(element, kAXRoleAttribute as String) ?? "?"
+        let title = string(element, kAXTitleAttribute as String)
+            ?? string(element, kAXDescriptionAttribute as String) ?? ""
+        var actionsRef: CFArray?
+        AXUIElementCopyActionNames(element, &actionsRef)
+        let actions = (actionsRef as? [String]) ?? []
+        let pad = String(repeating: "  ", count: indent)
+        let identifier = string(element, kAXIdentifierAttribute as String) ?? "-"
+        let origin = point(element, kAXPositionAttribute as String) ?? .zero
+        let extent = size(element, kAXSizeAttribute as String) ?? .zero
+        DiagnosticLog.shared?.line("\(pad)\(role) \"\(title)\" id=\(identifier) "
+            + "at \(Int(origin.x)),\(Int(origin.y)) \(Int(extent.width))x\(Int(extent.height)) "
+            + "actions=\(actions.joined(separator: ","))")
+        let children = (copy(element, kAXChildrenAttribute as String) as? [AXUIElement]) ?? []
+        for child in children.prefix(30) {
+            describe(child, indent: indent + 1, remaining: remaining - 1)
+        }
+    }
+
     static func copy(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
         return AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success

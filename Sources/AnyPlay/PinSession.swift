@@ -181,9 +181,17 @@ final class PinSession: Identifiable {
     /// Sends a command to the target window without touching focus.
     @discardableResult
     func send(_ command: RemoteCommand) -> Bool {
-        // Play/pause goes out as a media key. It reaches the app that is playing, no
-        // matter what is in front — unlike a page shortcut, which needs the page to
-        // have keyboard focus and therefore never worked reliably.
+        // Against the Picture-in-Picture window the Accessibility API is the best path:
+        // it presses the real button, no matter what lies on top of the window. That
+        // also covers jumping ten seconds, which no media key offers.
+        if let target, target.isPictureInPicture,
+           let control = command.pictureInPictureControl,
+           PictureInPictureControls.press(control, inPID: target.processID) {
+            return true
+        }
+        // Otherwise play/pause goes out as a media key. It reaches the app that is
+        // playing, no matter what is in front — unlike a page shortcut, which needs
+        // the page to have keyboard focus and therefore never worked reliably.
         if command == .playPause {
             return MediaKeySender.post(.playPause)
         }

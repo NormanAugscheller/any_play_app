@@ -13,6 +13,7 @@
 //   --open-settings               open the settings window on launch
 //   --selftest-playpause          send one play/pause five seconds after launch
 //   --dump-frame /path/f.png      write one captured frame as a PNG
+//   --selftest-click              click the middle of the source window once
 
 import Foundation
 
@@ -31,6 +32,9 @@ public struct LaunchOptions: Equatable, Sendable {
     public var sendsPlayPauseOnLaunch = false
     /// Test switch: writes one captured frame to this path as a PNG.
     public var dumpFramePath: String?
+    /// Test switch: clicks the middle of the source window, to find out whether a
+    /// forwarded click reaches it at all.
+    public var clicksSourceCentreOnLaunch = false
 
     public static let current = LaunchOptions(CommandLine.arguments)
 
@@ -50,6 +54,7 @@ public struct LaunchOptions: Equatable, Sendable {
             case "--open-settings":  opensSettings = true; index += 1
             case "--selftest-playpause": sendsPlayPauseOnLaunch = true; index += 1
             case "--dump-frame":     dumpFramePath = value.isEmpty ? nil : value; index += 2
+            case "--selftest-click": clicksSourceCentreOnLaunch = true; index += 1
             default:                 index += 1
             }
         }

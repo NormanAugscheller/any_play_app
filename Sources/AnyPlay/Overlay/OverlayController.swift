@@ -11,6 +11,8 @@ final class OverlayController {
 
     /// The user wants the overlay hidden — via the button or Escape.
     var onCloseRequest: (() -> Void)?
+    /// A transport control pressed in the overlay.
+    var onCommand: ((RemoteCommand) -> Void)?
     /// Every move and resize. The target window has to follow, or it no longer lies
     /// beneath the overlay.
     var onFrameChanged: (() -> Void)?
@@ -122,6 +124,7 @@ final class OverlayController {
         panel.contentMinSize = NSSize(width: 200, height: 120)
         panel.contentView = chrome
         chrome.onClose = { [weak self] in self?.onCloseRequest?() }
+        chrome.onCommand = { [weak self] command in self?.onCommand?(command) }
         panel.onCloseRequest = { [weak self] in self?.onCloseRequest?() }
         panel.setFrameAutosaveName("AnyPlayOverlay")
         self.panel = panel
