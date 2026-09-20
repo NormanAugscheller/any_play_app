@@ -11,6 +11,8 @@
 //   --quit-after 30               quit after 30 seconds
 //   --selftest-input              switch into input mode and back
 //   --open-settings               open the settings window on launch
+//   --selftest-playpause          send one play/pause five seconds after launch
+//   --dump-frame /path/f.png      write one captured frame as a PNG
 
 import Foundation
 
@@ -23,6 +25,12 @@ public struct LaunchOptions: Equatable, Sendable {
     public var quitAfter: TimeInterval?
     public var runsInputSelftest = false
     public var opensSettings = false
+    /// Test switch: sends one play/pause a few seconds after launch. The media key
+    /// can only be posted by a process that macOS trusts for input, so it cannot be
+    /// tried from a loose script — it has to come from AnyPlay itself.
+    public var sendsPlayPauseOnLaunch = false
+    /// Test switch: writes one captured frame to this path as a PNG.
+    public var dumpFramePath: String?
 
     public static let current = LaunchOptions(CommandLine.arguments)
 
@@ -40,6 +48,8 @@ public struct LaunchOptions: Equatable, Sendable {
             case "--quit-after":     quitAfter = Double(value); index += 2
             case "--selftest-input": runsInputSelftest = true; index += 1
             case "--open-settings":  opensSettings = true; index += 1
+            case "--selftest-playpause": sendsPlayPauseOnLaunch = true; index += 1
+            case "--dump-frame":     dumpFramePath = value.isEmpty ? nil : value; index += 2
             default:                 index += 1
             }
         }

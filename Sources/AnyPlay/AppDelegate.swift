@@ -30,6 +30,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // (Only relevant for a launch at login — which AnyPlay does not offer.)
         controller.bringWindowForward()
         if LaunchOptions.current.opensSettings { controller.openSettings() }
+        if let path = LaunchOptions.current.dumpFramePath {
+            // A series, not one picture: a single frame cannot show whether anything
+            // moves. The number goes before the extension.
+            var index = 0
+            let timer = Timer(timeInterval: 2.0, repeats: true) { timer in
+                let url = URL(fileURLWithPath: path)
+                let name = url.deletingPathExtension().path + "-\(index)." + url.pathExtension
+                CaptureSession.dumpNextFrameTo = name
+                index += 1
+                if index >= 6 { timer.invalidate() }
+            }
+            timer.fireDate = Date().addingTimeInterval(8)
+            RunLoop.main.add(timer, forMode: .common)
+        }
+        if LaunchOptions.current.sendsPlayPauseOnLaunch {
+            let timer = Timer(timeInterval: 5.0, repeats: false) { _ in
+                MediaKeySender.post(.playPause)
+            }
+            RunLoop.main.add(timer, forMode: .common)
+        }
         installSignalHandlers()
 
         if let seconds = LaunchOptions.current.quitAfter {

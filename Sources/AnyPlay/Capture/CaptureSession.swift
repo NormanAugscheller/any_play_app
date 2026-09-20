@@ -8,6 +8,7 @@ import AppKit
 import ScreenCaptureKit
 import CoreMedia
 import CoreVideo
+import CoreImage
 import AnyPlayKit
 
 struct CaptureSettings {
@@ -32,6 +33,12 @@ final class CaptureSession: NSObject, ObservableObject {
     /// that has to be visible rather than passed on as a stuttering picture.
     @Published private(set) var framesPerSecond: Int = 0
     @Published private(set) var lastFrameStatus: SCFrameStatus?
+    /// Frames per second whose picture actually differs from the one before.
+    ///
+    /// `framesPerSecond` counts what ScreenCaptureKit delivers, which is not the same
+    /// thing: a window that has stopped drawing can still produce a full stream of
+    /// identical frames. Only this number says whether the picture is alive.
+    @Published private(set) var changedFramesPerSecond: Int = 0
     /// Stream resolution in real pixels — the number that shows whether a Retina
     /// display is mirrored sharply.
     @Published private(set) var pixelSize: CGSize = .zero
@@ -54,6 +61,13 @@ final class CaptureSession: NSObject, ObservableObject {
     private var stream: SCStream?
     private let sampleQueue = DispatchQueue(label: "com.normanaugscheller.anyplay.capture")
     private var frameCounter = 0
+    private var changeCounter = 0
+    private var lastFingerprint: UInt64 = 0
+    /// Set to a path to have the next frame written there as a PNG. Diagnosis only:
+    /// without a picture there is no way to check from a script what is being
+    /// captured — a frame rate says nothing about the content.
+    nonisolated(unsafe) static var dumpNextFrameTo: String?
+    private static let dumpContext = CIContext()
     private var settings = CaptureSettings()
     private var rateTimer: Timer?
     private(set) var window: TargetWindow?
@@ -86,6 +100,9 @@ final class CaptureSession: NSObject, ObservableObject {
             try await newStream.startCapture()
             stream = newStream
             state = .running
+            DiagnosticLog.shared?.line("SOURCE id=\(window.windowID) \(window.appName) "
+                                     + "\"\(window.displayTitle)\" frame=\(window.frame) "
+                                     + "stream=\(Int(size.width))x\(Int(size.height))px")
             startRateTimer()
         } catch {
             state = .failed(Self.explain(error))
@@ -129,6 +146,7 @@ final class CaptureSession: NSObject, ObservableObject {
         rateTimer?.invalidate()
         rateTimer = nil
         framesPerSecond = 0
+        changedFramesPerSecond = 0
         if let stream {
             try? await stream.stopCapture()
         }
@@ -150,11 +168,14 @@ final class CaptureSession: NSObject, ObservableObject {
 
     private func startRateTimer() {
         frameCounter = 0
+        changeCounter = 0
         let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.framesPerSecond = self.frameCounter
+                self.changedFramesPerSecond = self.changeCounter
                 self.frameCounter = 0
+                self.changeCounter = 0
             }
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -187,11 +208,53 @@ extension CaptureSession: SCStreamOutput, SCStreamDelegate {
             if let status { Task { @MainActor in self.lastFrameStatus = status } }
             return
         }
+        if let path = Self.dumpNextFrameTo {
+            Self.dumpNextFrameTo = nil
+            Self.writePNG(pixelBuffer, to: path)
+        }
+        let fingerprint = Self.fingerprint(of: pixelBuffer)
         Task { @MainActor in
             self.lastFrameStatus = status
             self.frameCounter += 1
+            if fingerprint != self.lastFingerprint {
+                self.lastFingerprint = fingerprint
+                self.changeCounter += 1
+            }
             for handler in self.surfaceHandlers.values { handler(surface) }
         }
+    }
+
+    nonisolated private static func writePNG(_ buffer: CVPixelBuffer, to path: String) {
+        let image = CIImage(cvPixelBuffer: buffer)
+        guard let png = dumpContext.pngRepresentation(
+            of: image, format: .RGBA8,
+            colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!) else { return }
+        try? png.write(to: URL(fileURLWithPath: path))
+        DiagnosticLog.shared?.line("FRAME written to \(path)")
+    }
+
+    /// A cheap signature of one frame: 64 pixels on a fixed grid, mixed together.
+    /// Enough to tell a moving picture from a frozen one, and far cheaper than
+    /// comparing whole frames sixty times a second.
+    nonisolated private static func fingerprint(of buffer: CVPixelBuffer) -> UInt64 {
+        guard CVPixelBufferLockBaseAddress(buffer, .readOnly) == kCVReturnSuccess else { return 0 }
+        defer { CVPixelBufferUnlockBaseAddress(buffer, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(buffer) else { return 0 }
+        let width = CVPixelBufferGetWidth(buffer)
+        let height = CVPixelBufferGetHeight(buffer)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+        guard width > 8, height > 8 else { return 0 }
+        let bytes = base.assumingMemoryBound(to: UInt8.self)
+        var hash: UInt64 = 0xcbf29ce484222325
+        for row in 0..<8 {
+            let y = height * (2 * row + 1) / 16
+            for column in 0..<8 {
+                let x = width * (2 * column + 1) / 16
+                let value = UInt64(bytes[y * bytesPerRow + x * 4])
+                hash = (hash ^ value) &* 0x100000001b3
+            }
+        }
+        return hash
     }
 
     nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {

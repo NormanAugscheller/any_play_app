@@ -64,6 +64,7 @@ final class MainWindowController: NSWindowController {
                 log.line("overlayDraws=\(self.pin.overlay.drawCount) "
                        + "ax=\(Permission.accessibility.isGranted) "
                        + "fps=\(self.pin.capture.framesPerSecond) "
+                       + "changed=\(self.pin.capture.changedFramesPerSecond) "
                        + "state=\(self.pin.capture.state) "
                        + "overlay=\(self.pin.overlay.isVisible) "
                        + "level=\(panel?.level.rawValue ?? -1) "
