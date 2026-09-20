@@ -54,4 +54,37 @@ struct WindowFilterTests {
     func rejectsOwnerlessWindow() {
         #expect(!WindowFilter.isUsable(candidate(hasOwner: false), ownBundleID: "me"))
     }
+
+    // MARK: Picture-in-Picture
+    //
+    // The best source AnyPlay has: only the video, and drawn on every Space. It does
+    // not sit on the normal window layer, so without an exception the filter would
+    // throw away the one window the app most wants. Measured on the real system:
+    // layer 19, 493 x 258, bundle com.apple.PIPAgent.
+
+    func pictureInPicture(width: CGFloat = 493, height: CGFloat = 258) -> WindowCandidate {
+        candidate(layer: 19, width: width, height: height, title: "Bild-in-Bild",
+                  bundleID: WindowFilter.pictureInPictureBundleID)
+    }
+
+    @Test("The system Picture-in-Picture window is offered although it is not on layer 0")
+    func acceptsPictureInPicture() {
+        #expect(WindowFilter.isUsable(pictureInPicture(), ownBundleID: "me"))
+    }
+
+    @Test("Another window on layer 19 is still rejected")
+    func rejectsOtherWindowsOnTheSameLayer() {
+        #expect(!WindowFilter.isUsable(candidate(layer: 19), ownBundleID: "me"))
+    }
+
+    @Test("A Picture-in-Picture dragged small stays usable, a flat 16:9 picture included")
+    func acceptsSmallPictureInPicture() {
+        #expect(WindowFilter.isUsable(pictureInPicture(width: 250, height: 140), ownBundleID: "me"))
+        #expect(WindowFilter.isUsable(pictureInPicture(width: 300, height: 169), ownBundleID: "me"))
+    }
+
+    @Test("Below the Picture-in-Picture minimum it is dropped as well")
+    func rejectsTinyPictureInPicture() {
+        #expect(!WindowFilter.isUsable(pictureInPicture(width: 200, height: 112), ownBundleID: "me"))
+    }
 }

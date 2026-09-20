@@ -29,9 +29,31 @@ public enum WindowFilter {
     /// Safari keeps six untitled windows on layer 0, one of them 500 × 500.
     public static let minimumSide: CGFloat = 200
 
+    /// The system's Picture-in-Picture window, the one AnyPlay wants most.
+    ///
+    /// It is the best possible source: it contains nothing but the video — no address
+    /// bar, no page header — and macOS shows it on every Space, so it keeps being
+    /// drawn. A browser window on another Space does not: measured, ScreenCaptureKit
+    /// then delivers zero frames and the mirror freezes.
+    ///
+    /// It has to be let through explicitly because it does not live on the normal
+    /// window layer. Measured: layer 19, 493 × 258, owner "Bild-in-Bild".
+    public static let pictureInPictureBundleID = "com.apple.PIPAgent"
+
+    /// Picture-in-Picture can be dragged smaller than a real window ever gets, and a
+    /// wide video is flat. Judged by the smaller side, a 16:9 picture 250 points wide
+    /// is only 140 high — still a perfectly good source.
+    public static let minimumSideForPictureInPicture: CGFloat = 120
+
+    public static func isPictureInPicture(_ window: WindowCandidate) -> Bool {
+        window.bundleID == pictureInPictureBundleID
+    }
+
     public static func isUsable(_ window: WindowCandidate, ownBundleID: String?) -> Bool {
-        guard window.layer == 0,
-              window.frame.width >= minimumSide, window.frame.height >= minimumSide,
+        let isPiP = isPictureInPicture(window)
+        let smallestSide = isPiP ? minimumSideForPictureInPicture : minimumSide
+        guard window.layer == 0 || isPiP,
+              window.frame.width >= smallestSide, window.frame.height >= smallestSide,
               window.hasOwningApplication
         else { return false }
         if let own = ownBundleID, window.bundleID == own { return false }
