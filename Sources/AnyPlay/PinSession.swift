@@ -51,6 +51,7 @@ final class PinSession: Identifiable {
         guard let target else { return }
         overlay.onFrameChanged = { [weak self] in self?.syncTargetToOverlay() }
         overlay.show(sourceSize: target.frame.size)
+        overlay.setPictureInPicture(target.isPictureInPicture)
         pinTargetWindow()
     }
 

@@ -51,6 +51,49 @@ enum AXBridge {
         }
     }
 
+    /// Searches an app's Accessibility tree for pressable elements whose label
+    /// contains `needle`. Diagnosis only: it answers whether a button inside a web
+    /// page can be reached — and whether that still holds when the window sits on
+    /// another Space.
+    ///
+    /// A web page produces a deep and wide tree, so the walk is bounded. Without a
+    /// budget this runs for minutes on a YouTube page.
+    static func find(_ needle: String, inPID pid: pid_t,
+                     maximumNodes: Int = 40_000, maximumDepth: Int = 40) {
+        let app = AXUIElementCreateApplication(pid)
+        // WebKit only builds the Accessibility tree for the page once a client asks
+        // for it. Without this the walk sees the toolbar and stops: measured, 684
+        // nodes and not one element of the page.
+        let enabled = AXUIElementSetAttributeValue(
+            app, "AXManualAccessibility" as CFString, kCFBooleanTrue) == .success
+        DiagnosticLog.shared?.line("AXFIND manual accessibility set: \(enabled)")
+        var visited = 0
+        var hits = 0
+        var stack: [(element: AXUIElement, depth: Int)] = [(app, 0)]
+        while let (element, depth) = stack.popLast(), visited < maximumNodes {
+            visited += 1
+            let label = [string(element, kAXTitleAttribute as String),
+                         string(element, kAXDescriptionAttribute as String),
+                         string(element, kAXValueAttribute as String)]
+                .compactMap { $0 }.joined(separator: " | ")
+            if label.localizedCaseInsensitiveContains(needle) {
+                var actionsRef: CFArray?
+                AXUIElementCopyActionNames(element, &actionsRef)
+                let actions = (actionsRef as? [String]) ?? []
+                let role = string(element, kAXRoleAttribute as String) ?? "?"
+                DiagnosticLog.shared?.line("AXFIND depth=\(depth) \(role) \"\(label)\" "
+                                         + "actions=\(actions.joined(separator: ","))")
+                hits += 1
+            }
+            guard depth < maximumDepth,
+                  let children = copy(element, kAXChildrenAttribute as String) as? [AXUIElement]
+            else { continue }
+            for child in children { stack.append((child, depth + 1)) }
+        }
+        DiagnosticLog.shared?.line("AXFIND \"\(needle)\" in pid \(pid): "
+                                 + "\(hits) hits, \(visited) nodes visited")
+    }
+
     static func copy(_ element: AXUIElement, _ attribute: String) -> CFTypeRef? {
         var value: CFTypeRef?
         return AXUIElementCopyAttributeValue(element, attribute as CFString, &value) == .success

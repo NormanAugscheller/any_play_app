@@ -27,6 +27,7 @@
 "picker.menuBarHint" = "Closing this window leaves AnyPlay running, as an icon in the menu bar next to the clock.";
 "overlay.back10" = "Back 10 seconds";
 "overlay.forward10" = "Forward 10 seconds";
+"overlay.backToBrowser" = "Back to the browser";
 "window.untitled" = "(untitled)";
 "error.screenRecordingDenied.long" = "macOS refuses screen recording. The permission is missing or was revoked.";
 "error.screenRecordingDenied" = "macOS refuses screen recording.";

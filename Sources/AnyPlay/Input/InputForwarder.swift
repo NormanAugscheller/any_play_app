@@ -29,14 +29,19 @@ enum RemoteCommand: CaseIterable {
     case forward10
     case mute
     case fullscreen
+    /// Puts the video back into the browser window it came from and brings that
+    /// window forward. Measured: one press does both. There is no key for it — it
+    /// exists only as a button of the Picture-in-Picture window.
+    case backToBrowser
 
-    var keyCode: CGKeyCode {
+    var keyCode: CGKeyCode? {
         switch self {
         case .playPause:  return CGKeyCode(kVK_ANSI_K)
         case .back10:     return CGKeyCode(kVK_ANSI_J)
         case .forward10:  return CGKeyCode(kVK_ANSI_L)
         case .mute:       return CGKeyCode(kVK_ANSI_M)
         case .fullscreen: return CGKeyCode(kVK_ANSI_F)
+        case .backToBrowser: return nil
         }
     }
 
@@ -44,9 +49,10 @@ enum RemoteCommand: CaseIterable {
     /// one. Muting and fullscreen have no button there.
     var pictureInPictureControl: PictureInPictureControl? {
         switch self {
-        case .playPause:  return .playPause
-        case .back10:     return .back10
-        case .forward10:  return .forward10
+        case .playPause:     return .playPause
+        case .back10:        return .back10
+        case .forward10:     return .forward10
+        case .backToBrowser: return .restore
         case .mute, .fullscreen: return nil
         }
     }
@@ -77,7 +83,8 @@ enum InputForwarder {
 
     @discardableResult
     static func send(_ command: RemoteCommand, to pid: pid_t) -> Bool {
-        send(key: command.keyCode, to: pid)
+        guard let key = command.keyCode else { return false }
+        return send(key: key, to: pid)
     }
 
     /// Sends a pointer move to one process, without a click. Used to make a window

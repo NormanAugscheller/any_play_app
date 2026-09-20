@@ -50,6 +50,12 @@ final class OverlayController {
         }
     }
 
+    /// Whether the source is a Picture-in-Picture window. Decides whether the way
+    /// back into the browser is offered.
+    func setPictureInPicture(_ isPictureInPicture: Bool) {
+        chrome.setShowsBackToBrowser(isPictureInPicture)
+    }
+
     func showMessage(_ text: String, actionTitle: String?, action: (() -> Void)?) {
         chrome.showMessage(text, actionTitle: actionTitle, action: action)
     }

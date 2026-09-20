@@ -16,6 +16,7 @@ final class OverlayChromeView: NSView {
 
     private let closeButton = NSButton()
     private let controlBar = NSStackView()
+    private var backToBrowserButton: NSButton?
     private let messageLabel = NSTextField(labelWithString: "")
     private let messageButton = NSButton(title: "", target: nil, action: nil)
     private var messageAction: (() -> Void)?
@@ -114,6 +115,21 @@ final class OverlayChromeView: NSView {
         for (command, symbol, key) in buttons {
             controlBar.addArrangedSubview(controlButton(command, symbol: symbol, key: key))
         }
+
+        // Only useful for a Picture-in-Picture source, so it stays hidden otherwise.
+        let back = controlButton(.backToBrowser, symbol: "arrow.uturn.backward",
+                                 key: "overlay.backToBrowser")
+        back.isHidden = true
+        backToBrowserButton = back
+        controlBar.addArrangedSubview(back)
+    }
+
+    /// Shows the way back into the browser. It is the answer to an advert: the button
+    /// that skips it belongs to the web page, not to the video, so it is not in the
+    /// mirrored picture and cannot be pressed from here. One press gets you to the
+    /// page instead of hunting for the window.
+    func setShowsBackToBrowser(_ shows: Bool) {
+        backToBrowserButton?.isHidden = !shows
     }
 
     private func controlButton(_ command: RemoteCommand, symbol: String, key: String) -> NSButton {

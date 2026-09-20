@@ -27,6 +27,7 @@
 "picker.menuBarHint" = "Wenn du dieses Fenster schließt, läuft AnyPlay weiter — als Symbol in der Menüleiste neben der Uhr.";
 "overlay.back10" = "10 Sekunden zurück";
 "overlay.forward10" = "10 Sekunden vor";
+"overlay.backToBrowser" = "Zurück zum Browser";
 "window.untitled" = "(ohne Titel)";
 "error.screenRecordingDenied.long" = "macOS verweigert die Bildschirmaufnahme. Die Freigabe fehlt oder wurde zurückgenommen.";
 "error.screenRecordingDenied" = "macOS verweigert die Bildschirmaufnahme.";

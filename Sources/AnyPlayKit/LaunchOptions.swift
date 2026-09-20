@@ -14,6 +14,7 @@
 //   --selftest-playpause          send one play/pause five seconds after launch
 //   --dump-frame /path/f.png      write one captured frame as a PNG
 //   --selftest-click              click the middle of the source window once
+//   --selftest-ax-find id=text    search that app's Accessibility tree for "text"
 
 import Foundation
 
@@ -35,6 +36,8 @@ public struct LaunchOptions: Equatable, Sendable {
     /// Test switch: clicks the middle of the source window, to find out whether a
     /// forwarded click reaches it at all.
     public var clicksSourceCentreOnLaunch = false
+    /// Test switch: "<bundleID>=<text>" searches that app's Accessibility tree.
+    public var accessibilitySearch: String?
 
     public static let current = LaunchOptions(CommandLine.arguments)
 
@@ -55,6 +58,7 @@ public struct LaunchOptions: Equatable, Sendable {
             case "--selftest-playpause": sendsPlayPauseOnLaunch = true; index += 1
             case "--dump-frame":     dumpFramePath = value.isEmpty ? nil : value; index += 2
             case "--selftest-click": clicksSourceCentreOnLaunch = true; index += 1
+            case "--selftest-ax-find": accessibilitySearch = value.isEmpty ? nil : value; index += 2
             default:                 index += 1
             }
         }

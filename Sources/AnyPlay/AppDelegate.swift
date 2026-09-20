@@ -44,6 +44,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             timer.fireDate = Date().addingTimeInterval(8)
             RunLoop.main.add(timer, forMode: .common)
         }
+        if let search = LaunchOptions.current.accessibilitySearch {
+            let parts = search.split(separator: "=", maxSplits: 1).map(String.init)
+            let timer = Timer(timeInterval: 5.0, repeats: false) { _ in
+                guard parts.count == 2,
+                      let app = NSRunningApplication
+                        .runningApplications(withBundleIdentifier: parts[0]).first else {
+                    DiagnosticLog.shared?.line("AXFIND: app not running")
+                    return
+                }
+                if parts[1] == "RESTORE" {
+                    guard let pip = NSRunningApplication.runningApplications(
+                        withBundleIdentifier: "com.apple.PIPAgent").first else { return }
+                    PictureInPictureControls.press(.restore, inPID: pip.processIdentifier)
+                    DiagnosticLog.shared?.line("after restore front="
+                        + (NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?"))
+                } else if parts[1] == "TREE" {
+                    AXBridge.dumpTree(ofPID: app.processIdentifier, depth: 6)
+                } else {
+                    AXBridge.find(parts[1], inPID: app.processIdentifier)
+                }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+        }
         if LaunchOptions.current.clicksSourceCentreOnLaunch {
             let timer = Timer(timeInterval: 6.0, repeats: false) { _ in
                 MainActor.assumeIsolated { controller.clickSourceCentreForTest() }
