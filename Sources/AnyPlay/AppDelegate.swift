@@ -22,15 +22,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             controller?.bringWindowForward()
         }
 
-        // Show the window on the very first launch and while a permission is missing —
-        // otherwise nobody would know where AnyPlay lives. After that it stays in the
-        // menu bar until someone chooses "Choose Window …".
-        let seenBefore = UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
-        UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
-        if !seenBefore || !Permission.screenRecording.isGranted
-            || LaunchOptions.current.hasAutoSelection {
-            controller.bringWindowForward()
-        }
+        // Every launch shows the window. Earlier only the first one did, and every
+        // later launch put the app in the menu bar silently: no Dock icon, no window,
+        // nothing. Starting an app from Spotlight and seeing nothing happen reads as a
+        // broken app, and the menu bar item can be hidden behind the notch, which
+        // leaves no way back in. Launching is a deliberate act, so it gets an answer.
+        // (Only relevant for a launch at login — which AnyPlay does not offer.)
+        controller.bringWindowForward()
         if LaunchOptions.current.opensSettings { controller.openSettings() }
         installSignalHandlers()
 

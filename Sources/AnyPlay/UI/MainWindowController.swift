@@ -19,6 +19,9 @@ final class MainWindowController: NSWindowController {
     private var statusItem: StatusItemController?
     private var settingsWindow: SettingsWindowController?
     private var settingsObserver: NSObjectProtocol?
+    private var windowKeyObserver: NSObjectProtocol?
+    private var isShowingMainContent = false
+    private var refreshTask: Task<Void, Never>?
 
     /// The app works with exactly one pin; the list behind it is ready for more.
     private var pin: PinSession { pins.primary }
@@ -38,6 +41,7 @@ final class MainWindowController: NSWindowController {
         window.setFrameAutosaveName("AnyPlayMainWindow")
         super.init(window: window)
         showAppropriateContent()
+        observeWindowFocus()
         startDiagnosticLogIfRequested()
     }
 
@@ -70,6 +74,28 @@ final class MainWindowController: NSWindowController {
         }
         RunLoop.main.add(timer, forMode: .common)
         diagnosticTimer = timer
+    }
+
+    // MARK: Keeping the window list current
+
+    /// The list used to be fetched once, when the window was first built. Open an app
+    /// afterwards and it was missing — with no hint that the "Reload" button had to be
+    /// pressed. So every time the window comes to the front, the list is fetched again.
+    private func observeWindowFocus() {
+        windowKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshWindowList() }
+            }
+    }
+
+    /// Fetching the list takes a moment and `bringWindowForward` also makes the window
+    /// key, so the call can arrive twice. A running fetch swallows the second one.
+    private func refreshWindowList() {
+        guard isShowingMainContent, refreshTask == nil else { return }
+        refreshTask = Task { [weak self] in
+            await self?.registry.refresh(showingLoadingState: false)
+            self?.refreshTask = nil
+        }
     }
 
     // MARK: Content
@@ -115,11 +141,13 @@ final class MainWindowController: NSWindowController {
     }
 
     private func showMainContent() {
+        isShowingMainContent = true
         let picker = PickerView(
             registry: registry,
             selection: selection,
             onSelect: { [weak self] window in self?.select(window) },
-            onRefresh: { [weak self] in Task { await self?.registry.refresh() } })
+            onRefresh: { [weak self] in Task { await self?.registry.refresh() } },
+            onQuit: { NSApp.terminate(nil) })
 
         let pickerItem = NSSplitViewItem(sidebarWithViewController: NSHostingController(rootView: picker))
         pickerItem.minimumThickness = 280
@@ -145,9 +173,12 @@ final class MainWindowController: NSWindowController {
 
         installHotkeys()
         install(split)
-        Task {
-            await registry.refresh()
-            applyAutoSelectionIfRequested()
+        // Through `refreshTask`, so the refresh that follows when the window comes to
+        // the front does not fetch the same list a second time.
+        refreshTask = Task { [weak self] in
+            await self?.registry.refresh()
+            self?.refreshTask = nil
+            self?.applyAutoSelectionIfRequested()
         }
     }
 
@@ -172,6 +203,9 @@ final class MainWindowController: NSWindowController {
         AXBridge.bringSelfToFront()
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
+        // An already-key window posts no notification, so the refresh is triggered here
+        // as well. Windows opened since the last look would otherwise stay missing.
+        refreshWindowList()
         DiagnosticLog.shared?.line("WINDOW brought forward")
     }
 

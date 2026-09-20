@@ -20,12 +20,15 @@ struct PickerView: View {
     @ObservedObject var selection: Selection
     let onSelect: (TargetWindow) -> Void
     let onRefresh: () -> Void
+    let onQuit: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
             header
             Divider()
             content
+            Divider()
+            footer
         }
         .frame(minWidth: 280)
     }
@@ -41,6 +44,22 @@ struct PickerView: View {
             }
             .buttonStyle(.borderless)
             .help(L10n.tr("picker.reload.help"))
+        }
+        .padding(Space.m)
+    }
+
+    /// AnyPlay has no Dock icon and no menu bar of its own, so a closed window leaves
+    /// no visible way out — and the menu bar item can sit hidden behind a notch. This
+    /// window is the one surface everybody finds, so the way out belongs here.
+    private var footer: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            Text(verbatim: L10n.tr("picker.menuBarHint"))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(L10n.tr("menu.quit"), action: onQuit)
+                .controlSize(.large)
+                .frame(maxWidth: .infinity)
         }
         .padding(Space.m)
     }

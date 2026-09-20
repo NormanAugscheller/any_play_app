@@ -20,4 +20,7 @@ if [ -z "$SWIFT" ] || ! "$SWIFT" --version >/dev/null 2>&1; then
          -Xlinker -rpath -Xlinker "$LIBS")
 fi
 
-"$SWIFT" test --package-path "$DIR" "${EXTRA[@]}" "$@"
+# bash 3.2 ships with macOS, and there an empty array counts as unset: with
+# `set -u`, "${EXTRA[@]}" then aborts the script. The +-form expands to nothing
+# when the array is empty instead.
+"$SWIFT" test --package-path "$DIR" ${EXTRA[@]+"${EXTRA[@]}"} "$@"

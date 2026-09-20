@@ -24,8 +24,17 @@ final class WindowRegistry: ObservableObject {
         return Set(list.compactMap { $0[kCGWindowNumber as String] as? CGWindowID })
     }
 
-    func refresh() async {
-        state = .loading
+    /// True once a list has been delivered at least once.
+    private var hasList: Bool {
+        if case .ready = state { return true }
+        return false
+    }
+
+    /// - Parameter showingLoadingState: pass `false` for an automatic refresh. The
+    ///   current list then stays on screen until the new one arrives. Blinking back to
+    ///   "Looking for windows" every time the window is focused would look broken.
+    func refresh(showingLoadingState: Bool = true) async {
+        if showingLoadingState || !hasList { state = .loading }
         do {
             // onScreenWindowsOnly: false — a window in another Space must stay listed,
             // or the target would vanish as soon as a game goes fullscreen.
@@ -45,6 +54,8 @@ final class WindowRegistry: ObservableObject {
                     return lhs.appName.localizedCaseInsensitiveCompare(rhs.appName) == .orderedAscending
                 }
             state = .ready(windows)
+            DiagnosticLog.shared?.line("LIST \(windows.count) windows: "
+                + Set(windows.map(\.appName)).sorted().joined(separator: ", "))
         } catch {
             state = .failed(Self.explain(error))
         }

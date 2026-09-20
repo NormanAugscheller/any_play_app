@@ -61,8 +61,17 @@ not allow the Accessibility API on other processes.
 
 ## Using it
 
-AnyPlay lives in the menu bar and has no Dock icon. Only one AnyPlay runs at a time —
-launching it again brings the running one's window forward.
+AnyPlay lives in the menu bar and has no Dock icon. Every launch opens its window, and
+only one AnyPlay runs at a time — launching it again brings the running one's window
+forward.
+
+**To quit**, use the button at the bottom of the window list, or the menu bar icon →
+*Quit AnyPlay*. Closing the window is not the same thing: AnyPlay stays in the menu bar
+so the overlay survives. Either way a pinned window gets its old size back first.
+
+If the menu bar icon is nowhere to be seen, a menu bar manager such as Ice, Bartender or
+Hidden Bar is probably hiding it — that is also why the window carries a quit button of
+its own.
 
 | Shortcut | Action |
 |---|---|

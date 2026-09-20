@@ -24,6 +24,7 @@
 "picker.empty.title" = "Keine Fenster gefunden";
 "picker.empty.message" = "Öffne ein Fenster, das du spiegeln willst — zum Beispiel Safari mit einem Video — und lade neu.";
 "picker.notVisible" = "· nicht sichtbar";
+"picker.menuBarHint" = "Wenn du dieses Fenster schließt, läuft AnyPlay weiter — als Symbol in der Menüleiste neben der Uhr.";
 "window.untitled" = "(ohne Titel)";
 "error.screenRecordingDenied.long" = "macOS verweigert die Bildschirmaufnahme. Die Freigabe fehlt oder wurde zurückgenommen.";
 "error.screenRecordingDenied" = "macOS verweigert die Bildschirmaufnahme.";

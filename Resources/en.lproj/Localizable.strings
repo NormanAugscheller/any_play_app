@@ -24,6 +24,7 @@
 "picker.empty.title" = "No windows found";
 "picker.empty.message" = "Open a window you want to mirror — Safari with a video, for example — and reload.";
 "picker.notVisible" = "· not visible";
+"picker.menuBarHint" = "Closing this window leaves AnyPlay running, as an icon in the menu bar next to the clock.";
 "window.untitled" = "(untitled)";
 "error.screenRecordingDenied.long" = "macOS refuses screen recording. The permission is missing or was revoked.";
 "error.screenRecordingDenied" = "macOS refuses screen recording.";
